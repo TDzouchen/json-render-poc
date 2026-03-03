@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { Spec } from "@json-render/react";
+import { useUIStream } from "@json-render/react";
 import {
   Minus,
   Square,
@@ -8,30 +10,97 @@ import {
   Paperclip,
   Smile,
   Send,
+  Loader2,
   MessageCircle,
 } from "lucide-react";
+import { SchemaRender } from "../lib/render/renderer";
+import { Toaster } from "../components/ui/sonner";
+import { toast } from "sonner";
 
 interface Message {
   id: number;
-  text: string;
+  text?: string;
   sender: string;
   time: string;
+  uiTree?: Spec | null;
+  usageText?: string;
 }
+
+type PromptContextTurn = {
+  role: "user" | "assistant";
+  text: string;
+};
+
+type UsageMeta = {
+  __meta?: string;
+  promptTokens?: number;
+  completionTokens?: number;
+  totalTokens?: number;
+};
 
 const initialMessages: Message[] = [
   {
     id: 1,
-    text: "Gen LLM Rich UI STG",
+    text: "Design your UI by chatting with the bot. Try asking it to create a simple form, or a dashboard with charts!",
     sender: "ChatBot",
     time: "",
   },
-  {
-    id: 2,
-    text: "Hello! Welcome to Talkdesk. How can I assist you today?",
-    sender: "ChatBot",
-    time: "04:11 PM",
-  },
 ];
+
+function toRenderableSpec(spec: Spec): Spec | null {
+  if (!spec?.root || !spec.elements || !spec.elements[spec.root]) {
+    return null;
+  }
+
+  const elements: Spec["elements"] = {};
+  const visited = new Set<string>();
+  const stack = [spec.root];
+
+  while (stack.length > 0) {
+    const key = stack.pop()!;
+    if (visited.has(key)) continue;
+    visited.add(key);
+
+    const element = spec.elements[key];
+    if (!element) continue;
+
+    const validChildren = (element.children ?? []).filter(
+      (child) => !!spec.elements[child],
+    );
+
+    elements[key] = {
+      ...element,
+      children: validChildren,
+    };
+
+    for (const child of validChildren) {
+      stack.push(child);
+    }
+  }
+
+  return {
+    ...spec,
+    elements,
+  };
+}
+
+function getUsageTextFromRawLines(lines: string[]): string | undefined {
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    const line = lines[index]?.trim();
+    if (!line || !line.startsWith("{")) continue;
+
+    try {
+      const parsed = JSON.parse(line) as UsageMeta;
+      if (parsed.__meta === "usage" && typeof parsed.totalTokens === "number") {
+        return `${parsed.totalTokens.toLocaleString()} tokens`;
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return undefined;
+}
 
 function BotAvatar() {
   return (
@@ -41,10 +110,57 @@ function BotAvatar() {
   );
 }
 
+function BotLoadingBubble() {
+  return (
+    <div className="flex items-center gap-1.5 py-1 text-gray-500">
+      <span className="text-sm font-medium animate-pulse">Generating UI</span>
+      <div className="flex items-center gap-1">
+        <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce [animation-delay:0ms]" />
+        <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce [animation-delay:120ms]" />
+        <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce [animation-delay:240ms]" />
+      </div>
+    </div>
+  );
+}
+
 export default function ChatWidget() {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState("");
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const pendingBotIdRef = useRef<number | null>(null);
+  const currentTreeRef = useRef<Spec | null>(null);
+  const hasCurrentStreamDataRef = useRef(false);
+  const rawLinesBaselineRef = useRef(0);
+
+  const {
+    spec: apiSpec,
+    isStreaming,
+    rawLines,
+    send,
+    clear,
+  } = useUIStream({
+    api: "/api/generate",
+    onError: (err: Error) => {
+      const message = err.message || "Generation failed. Please try again.";
+      toast.error(message);
+      const pendingId = pendingBotIdRef.current;
+      if (pendingId) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === pendingId
+              ? {
+                  ...msg,
+                  text: message,
+                }
+              : msg,
+          ),
+        );
+      }
+      pendingBotIdRef.current = null;
+    },
+  } as Parameters<typeof useUIStream>[0]);
 
   const now = () => {
     const d = new Date();
@@ -55,18 +171,131 @@ export default function ChatWidget() {
     return `${hour}:${m} ${ampm}`;
   };
 
-  const sendMessage = () => {
-    if (!input.trim()) return;
+  const sendMessage = async () => {
+    const prompt = input.trim();
+    if (!prompt || isStreaming) return;
+
+    const userMessageId = Date.now();
+    const botMessageId = userMessageId + 1;
+
+    rawLinesBaselineRef.current = rawLines.length;
+    hasCurrentStreamDataRef.current = false;
+    clear();
+    pendingBotIdRef.current = botMessageId;
+
     setMessages((prev) => [
       ...prev,
-      { id: Date.now(), text: input, sender: "User", time: now() },
+      { id: userMessageId, text: prompt, sender: "User", time: now() },
+      {
+        id: botMessageId,
+        text: "Generating UI...",
+        sender: "ChatBot",
+        time: now(),
+      },
     ]);
     setInput("");
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "64px";
+    }
+
+    try {
+      const history = messages
+        .filter((msg) => !!msg.text)
+        .slice(-8)
+        .map((msg) => ({
+          role: msg.sender === "User" ? "user" : "assistant",
+          text: msg.uiTree ? JSON.stringify(msg.uiTree) : msg.text || "",
+        }))
+        .filter((turn): turn is PromptContextTurn => turn.text.length > 0);
+
+      await send(prompt, {
+        previousSpec: currentTreeRef.current,
+        history,
+      });
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Generation failed. Please try again.";
+      toast.error(message);
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === botMessageId
+            ? {
+                ...msg,
+                text: message,
+              }
+            : msg,
+        ),
+      );
+      pendingBotIdRef.current = null;
+    }
+  };
+
+  console.log(">>> render", {
+    messages,
+    apiSpec,
+    isStreaming,
+    rawLines,
+  });
+
+  useEffect(() => {
     setTimeout(
       () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }),
       50,
     );
-  };
+  }, [messages, isStreaming]);
+
+  useEffect(() => {
+    if (isStreaming && rawLines.length > rawLinesBaselineRef.current) {
+      hasCurrentStreamDataRef.current = true;
+    }
+  }, [isStreaming, rawLines]);
+
+  useEffect(() => {
+    const pendingId = pendingBotIdRef.current;
+    if (
+      !pendingId ||
+      !apiSpec?.root ||
+      Object.keys(apiSpec.elements).length === 0
+    ) {
+      return;
+    }
+
+    const renderableSpec = toRenderableSpec(apiSpec);
+
+    if (isStreaming && !hasCurrentStreamDataRef.current) {
+      return;
+    }
+
+    if (!renderableSpec) {
+      return;
+    }
+
+    currentTreeRef.current = renderableSpec;
+    const usageText = !isStreaming
+      ? getUsageTextFromRawLines(rawLines)
+      : undefined;
+
+    setMessages((prev) =>
+      prev.map((msg) =>
+        msg.id === pendingId
+          ? {
+              ...msg,
+              text: isStreaming ? "Generating UI..." : undefined,
+              uiTree: renderableSpec,
+              usageText,
+            }
+          : msg,
+      ),
+    );
+
+    if (!isStreaming) {
+      pendingBotIdRef.current = null;
+      hasCurrentStreamDataRef.current = false;
+      rawLinesBaselineRef.current = 0;
+    }
+  }, [apiSpec, isStreaming, rawLines]);
 
   return (
     <div className="flex h-screen bg-gray-100 py-15 px-20">
@@ -105,21 +334,40 @@ export default function ChatWidget() {
         <div className="flex-1 overflow-y-auto bg-[#f0f0f0] px-4 py-4 space-y-4">
           {messages.map((msg) =>
             msg.sender === "ChatBot" ? (
-              <div key={msg.id} className="flex items-start gap-2">
-                <BotAvatar />
-                <div className="flex flex-col gap-1 max-w-[80%]">
-                  <div className="bg-white rounded-2xl rounded-tl-sm px-4 py-2.5 shadow-sm">
-                    <p className="text-sm text-gray-800 leading-relaxed">
-                      {msg.text}
-                    </p>
+              (() => {
+                const isCurrentGenerating =
+                  isStreaming && pendingBotIdRef.current === msg.id;
+
+                return (
+                  <div key={msg.id} className="flex items-start gap-2">
+                    <BotAvatar />
+                    <div className="flex flex-col gap-1 max-w-[80%]">
+                      <div className="bg-white rounded-2xl rounded-tl-sm px-4 py-2.5 shadow-sm">
+                        {isCurrentGenerating ? (
+                          <BotLoadingBubble />
+                        ) : (
+                          !!msg.text && (
+                            <p className="text-sm text-gray-800 leading-relaxed">
+                              {msg.text}
+                            </p>
+                          )
+                        )}
+                        {msg.uiTree && (
+                          <div>
+                            <SchemaRender uiTree={msg.uiTree} />
+                          </div>
+                        )}
+                      </div>
+                      {msg.time && (
+                        <p className="text-[11px] text-gray-400 pl-1">
+                          ChatBot · {msg.time}
+                          {msg.usageText ? ` · ${msg.usageText}` : ""}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  {msg.time && (
-                    <p className="text-[11px] text-gray-400 pl-1">
-                      ChatBot · {msg.time}
-                    </p>
-                  )}
-                </div>
-              </div>
+                );
+              })()
             ) : (
               <div key={msg.id} className="flex items-end justify-end gap-2">
                 <div className="flex flex-col items-end gap-1 max-w-[80%]">
@@ -142,11 +390,13 @@ export default function ChatWidget() {
         <div className="shrink-0 bg-transparent mx-3 mb-3">
           <div className="flex items-end gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm">
             <textarea
+              ref={textareaRef}
               rows={1}
               className="flex-1 text-sm text-gray-700 placeholder-gray-400 outline-none bg-transparent resize-none overflow-y-auto leading-relaxed"
               style={{ minHeight: "64px", maxHeight: "240px" }}
               placeholder="Type a message..."
               value={input}
+              disabled={isStreaming}
               onChange={(e) => {
                 setInput(e.target.value);
                 e.target.style.height = "auto";
@@ -154,6 +404,10 @@ export default function ChatWidget() {
                   Math.min(e.target.scrollHeight, 240) + "px";
               }}
               onKeyDown={(e) => {
+                if (isStreaming) {
+                  e.preventDefault();
+                  return;
+                }
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
                   sendMessage();
@@ -174,14 +428,21 @@ export default function ChatWidget() {
               </button>
               <button
                 onClick={sendMessage}
-                className="hover:text-gray-600 transition-colors"
+                className="hover:text-gray-600 transition-colors disabled:opacity-50"
+                disabled={isStreaming || !input.trim()}
               >
-                <Send className="w-4 h-4" />
+                {isStreaming ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
               </button>
             </div>
           </div>
         </div>
       </div>
+
+      <Toaster />
     </div>
   );
 }
