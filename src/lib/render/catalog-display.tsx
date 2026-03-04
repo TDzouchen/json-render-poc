@@ -1297,6 +1297,9 @@ export const {
     linkClick: async (params, _setState, state) => {
       const href = resolveParamString(params?.href, state, "#");
       toast.info(`Navigating to: ${href}`);
+      if (href.startsWith("http")) {
+        window.open(href, "_blank", "noopener,noreferrer");
+      }
     },
   },
 });
