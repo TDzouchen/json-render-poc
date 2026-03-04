@@ -192,7 +192,7 @@ export const playgroundCatalog = defineCatalog(schema, {
         title: z.string().nullable(),
       }),
       description:
-        "Google Maps embed iframe. Prefer query for place search, or lat/lng for a fixed location.",
+        "Google Maps embed iframe. Use query for place search, or lat/lng for a fixed location.",
     },
 
     Avatar: {

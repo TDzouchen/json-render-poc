@@ -9,21 +9,22 @@ type MapProps = {
 
 function buildMapSrc({ query, lat, lng, zoom }: MapProps): string {
   const zoomLevel = Math.min(20, Math.max(1, Math.round(zoom ?? 12)));
+  const buildGoogleEmbedUrl = (q: string) =>
+    `https://www.google.com/maps?q=${encodeURIComponent(q)}&z=${zoomLevel}&output=embed`;
 
   if (query && query.trim()) {
-    return `https://www.google.com/maps?q=${encodeURIComponent(query.trim())}&z=${zoomLevel}&output=embed`;
+    return buildGoogleEmbedUrl(query.trim());
   }
 
   if (typeof lat === "number" && typeof lng === "number") {
-    return `https://www.google.com/maps?q=${lat},${lng}&z=${zoomLevel}&output=embed`;
+    return buildGoogleEmbedUrl(`${lat},${lng}`);
   }
 
-  return `https://www.google.com/maps?q=${encodeURIComponent("San Francisco, CA")}&z=${zoomLevel}&output=embed`;
+  return buildGoogleEmbedUrl("San Francisco, CA");
 }
 
 export function Map(props: MapProps) {
   const iframeTitle = props.title || "Google Map";
-  const iframeHeight = Math.max(180, Math.min(720, props.height ?? 320));
   const src = buildMapSrc(props);
 
   return (
@@ -34,8 +35,7 @@ export function Map(props: MapProps) {
         loading="lazy"
         allowFullScreen
         referrerPolicy="no-referrer-when-downgrade"
-        className="block w-full border-0"
-        style={{ height: iframeHeight }}
+        className="block w-full min-h-100 border-0"
       />
     </div>
   );
