@@ -61,7 +61,7 @@ export const playgroundCatalog = defineCatalog(schema, {
           z.object({
             label: z.string(),
             value: z.string(),
-          }),
+          })
         ),
         defaultValue: z.string().nullable(),
         statePath: z.string().nullable(),
@@ -77,7 +77,7 @@ export const playgroundCatalog = defineCatalog(schema, {
           z.object({
             title: z.string(),
             content: z.string(),
-          }),
+          })
         ),
         type: z.enum(["single", "multiple"]).nullable(),
       }),
@@ -122,7 +122,7 @@ export const playgroundCatalog = defineCatalog(schema, {
           z.object({
             title: z.string().nullable(),
             description: z.string().nullable(),
-          }),
+          })
         ),
       }),
       description: "Horizontally scrollable carousel of cards.",
@@ -267,7 +267,7 @@ export const playgroundCatalog = defineCatalog(schema, {
           z.object({
             label: z.string(),
             value: z.number(),
-          }),
+          })
         ),
       }),
       description: "Vertical bar chart",
@@ -280,7 +280,7 @@ export const playgroundCatalog = defineCatalog(schema, {
           z.object({
             label: z.string(),
             value: z.number(),
-          }),
+          })
         ),
       }),
       description: "Line chart with points",
@@ -394,7 +394,7 @@ export const playgroundCatalog = defineCatalog(schema, {
           z.object({
             label: z.string(),
             value: z.string(),
-          }),
+          })
         ),
       }),
       events: ["select"],
@@ -418,7 +418,7 @@ export const playgroundCatalog = defineCatalog(schema, {
           z.object({
             label: z.string(),
             value: z.string(),
-          }),
+          })
         ),
         type: z.enum(["single", "multiple"]).nullable(),
         statePath: z.string().nullable(),
@@ -434,7 +434,7 @@ export const playgroundCatalog = defineCatalog(schema, {
           z.object({
             label: z.string(),
             value: z.string(),
-          }),
+          })
         ),
         statePath: z.string().nullable(),
       }),

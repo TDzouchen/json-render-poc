@@ -3,7 +3,7 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { createGroq } from "@ai-sdk/groq";
 import { headers } from "next/headers";
-import { buildUserPrompt } from "@json-render/core";
+import { buildUserPrompt, type Spec } from "@json-render/core";
 import { minuteRateLimit, dailyRateLimit } from "../../../lib/rate-limit";
 import { playgroundCatalog as catalog } from "../../../lib/render/catalog";
 
@@ -26,6 +26,17 @@ const API_KEY = process.env.API_KEY;
 const LLM_PROVIDER = process.env.LLM_PROVIDER;
 const LLM_PROVIDER_BASE_URL = process.env.LLM_PROVIDER_BASE_URL;
 const LLM_MODEL = process.env.LLM_MODEL;
+const LLM_MODEL_TEMPERATURE = +process.env.LLM_MODEL_TEMPERATURE! || 0.7;
+
+type PromptContextTurn = {
+  role: "user" | "assistant";
+  text: string;
+};
+
+type GenerateContext = {
+  previousSpec?: Spec | null;
+  history?: PromptContextTurn[];
+};
 
 function createModel() {
   switch (LLM_PROVIDER) {
@@ -66,7 +77,7 @@ export async function POST(req: Request) {
       {
         status: 500,
         headers: { "Content-Type": "application/json" },
-      },
+      }
     );
   }
   // Get client IP for rate limiting
@@ -91,17 +102,19 @@ export async function POST(req: Request) {
       {
         status: 429,
         headers: { "Content-Type": "application/json" },
-      },
+      }
     );
   }
 
-  // const { prompt, context } = await req.json();
-  const { prompt } = await req.json();
+  const { prompt, context } = (await req.json()) as {
+    prompt: string;
+    context?: GenerateContext;
+  };
   const model = createModel();
 
   const userPrompt = buildUserPrompt({
     prompt,
-    // currentSpec: context?.previousSpec,
+    currentSpec: context?.previousSpec,
     maxPromptLength: MAX_PROMPT_LENGTH,
   });
 
@@ -109,7 +122,7 @@ export async function POST(req: Request) {
     model,
     system: SYSTEM_PROMPT,
     prompt: userPrompt,
-    temperature: 0.7,
+    temperature: LLM_MODEL_TEMPERATURE,
   });
 
   // Stream the text, then append token usage metadata at the end
