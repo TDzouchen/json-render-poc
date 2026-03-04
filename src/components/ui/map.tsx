@@ -10,7 +10,9 @@ type MapProps = {
 function buildMapSrc({ query, lat, lng, zoom }: MapProps): string {
   const zoomLevel = Math.min(20, Math.max(1, Math.round(zoom ?? 12)));
   const buildGoogleEmbedUrl = (q: string) =>
-    `https://www.google.com/maps?q=${encodeURIComponent(q)}&z=${zoomLevel}&output=embed`;
+    `https://www.google.com/maps?q=${encodeURIComponent(
+      q
+    )}&z=${zoomLevel}&output=embed`;
 
   if (query && query.trim()) {
     return buildGoogleEmbedUrl(query.trim());
