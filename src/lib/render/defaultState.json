@@ -1,0 +1,34 @@
+{
+  "state": {
+    "pricings": [
+      {
+        "title": "Digital Essentials",
+        "recommend": false,
+        "description": "Digital Engagement, email,chat, SMS, social channels, dashboards, reports, APIs and more.",
+        "price": "$85USD Per user, Per month",
+        "getStartURL": "https://www.talkdesk.com/pricing/"
+      },
+      {
+        "title": "Voice Essentials",
+        "recommend": false,
+        "description": "Voice engagement, Routing, dashboards, reports, APIs, and more.",
+        "price": "$105USD Per user, Per month",
+        "getStartURL": "https://www.talkdesk.com/pricing/"
+      },
+      {
+        "title": "Elite",
+        "recommend": false,
+        "description": "Insights, mitigate risks of a distributed workforce, & choose from one of four add-ons.",
+        "price": "$165USD Per user, Per month",
+        "getStartURL": "https://www.talkdesk.com/pricing/"
+      },
+      {
+        "title": "Industry Experience Clouds",
+        "recommend": true,
+        "description": "Purpose-built for your industry to deliver value from day one.",
+        "price": "$225USD Per user, Per month",
+        "getStartURL": "https://www.talkdesk.com/pricing/"
+      }
+    ]
+  }
+}

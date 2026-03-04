@@ -587,7 +587,7 @@ export default function ChatWidget() {
                           )
                         )}
                         {msg.uiTree && (
-                          <div className="max-w-full overflow-auto">
+                          <div className="max-w-full min-w-40 overflow-auto">
                             <SchemaRender
                               uiTree={msg.uiTree}
                               onStateChange={(nextState) =>
