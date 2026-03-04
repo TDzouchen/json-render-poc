@@ -61,7 +61,7 @@ export const playgroundCatalog = defineCatalog(schema, {
           z.object({
             label: z.string(),
             value: z.string(),
-          })
+          }),
         ),
         defaultValue: z.string().nullable(),
         statePath: z.string().nullable(),
@@ -77,7 +77,7 @@ export const playgroundCatalog = defineCatalog(schema, {
           z.object({
             title: z.string(),
             content: z.string(),
-          })
+          }),
         ),
         type: z.enum(["single", "multiple"]).nullable(),
       }),
@@ -122,7 +122,7 @@ export const playgroundCatalog = defineCatalog(schema, {
           z.object({
             title: z.string().nullable(),
             description: z.string().nullable(),
-          })
+          }),
         ),
       }),
       description: "Horizontally scrollable carousel of cards.",
@@ -267,7 +267,7 @@ export const playgroundCatalog = defineCatalog(schema, {
           z.object({
             label: z.string(),
             value: z.number(),
-          })
+          }),
         ),
       }),
       description: "Vertical bar chart",
@@ -280,7 +280,7 @@ export const playgroundCatalog = defineCatalog(schema, {
           z.object({
             label: z.string(),
             value: z.number(),
-          })
+          }),
         ),
       }),
       description: "Line chart with points",
@@ -394,7 +394,7 @@ export const playgroundCatalog = defineCatalog(schema, {
           z.object({
             label: z.string(),
             value: z.string(),
-          })
+          }),
         ),
       }),
       events: ["select"],
@@ -418,7 +418,7 @@ export const playgroundCatalog = defineCatalog(schema, {
           z.object({
             label: z.string(),
             value: z.string(),
-          })
+          }),
         ),
         type: z.enum(["single", "multiple"]).nullable(),
         statePath: z.string().nullable(),
@@ -434,7 +434,7 @@ export const playgroundCatalog = defineCatalog(schema, {
           z.object({
             label: z.string(),
             value: z.string(),
-          })
+          }),
         ),
         statePath: z.string().nullable(),
       }),
@@ -456,25 +456,25 @@ export const playgroundCatalog = defineCatalog(schema, {
   actions: {
     setState: {
       params: z.object({
-        path: z.string(),
+        statePath: z.string(),
         value: z.unknown(),
       }),
-      description: "Update a value in the state model at the given path.",
+      description: "Update a value in the state model at the given statePath.",
     },
 
     pushState: {
       params: z.object({
-        path: z.string(),
+        statePath: z.string(),
         value: z.unknown(),
-        clearPath: z.string().optional(),
+        clearStatePath: z.string().optional(),
       }),
       description:
-        'Append an item to an array in state. Value can contain {path:"/statePath"} refs and "$id" for auto IDs. clearPath resets another path after pushing.',
+        'Append an item to an array in state. Value can contain {"$state":"/statePath"} refs and "$id" for auto IDs. clearStatePath resets another path after pushing.',
     },
 
     removeState: {
       params: z.object({
-        path: z.string(),
+        statePath: z.string(),
         index: z.number(),
       }),
       description: "Remove an item from an array in state at the given index.",

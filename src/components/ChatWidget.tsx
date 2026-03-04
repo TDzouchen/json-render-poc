@@ -532,7 +532,7 @@ export default function ChatWidget() {
   }, [apiSpec, isStreaming, rawLines]);
 
   return (
-    <div className="flex h-screen bg-gray-100 py-15 px-20">
+    <div className="flex h-screen bg-gray-100">
       {/* Widget container */}
       <div className="flex flex-col flex-1 rounded-2xl shadow-2xl overflow-hidden">
         {/* Header */}

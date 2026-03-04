@@ -77,7 +77,7 @@ export async function POST(req: Request) {
       {
         status: 500,
         headers: { "Content-Type": "application/json" },
-      }
+      },
     );
   }
   // Get client IP for rate limiting
@@ -102,7 +102,7 @@ export async function POST(req: Request) {
       {
         status: 429,
         headers: { "Content-Type": "application/json" },
-      }
+      },
     );
   }
 
