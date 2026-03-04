@@ -55,6 +55,7 @@ import {
 } from "../../components/ui/dropdown-menu";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
+import { Map } from "../../components/ui/map";
 import { Media } from "../../components/ui/media";
 import {
   Pagination as PaginationPrimitive,
@@ -549,6 +550,17 @@ export const {
       <Media url={props.url} type="audio" alt={props.alt ?? undefined} />
     ),
 
+    Map: ({ props }) => (
+      <Map
+        query={props.query}
+        lat={props.lat}
+        lng={props.lng}
+        zoom={props.zoom}
+        height={props.height}
+        title={props.title}
+      />
+    ),
+
     Avatar: ({ props }) => {
       const name = props.name || "?";
       const initials = name
@@ -743,7 +755,7 @@ export const {
                 <div className="text-xs text-muted-foreground">{d.value}</div>
                 <div className="w-full h-24 flex items-end">
                   <div
-                    className="w-full bg-primary rounded-t transition-all"
+                    className="w-full bg-primary rounded-t-lg transition-all"
                     style={{
                       height: `${(d.value / maxValue) * 100}%`,
                       minHeight: 2,

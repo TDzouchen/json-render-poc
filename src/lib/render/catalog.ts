@@ -182,6 +182,19 @@ export const playgroundCatalog = defineCatalog(schema, {
       description: "Native audio renderer.",
     },
 
+    Map: {
+      props: z.object({
+        query: z.string().nullable(),
+        lat: z.number().nullable(),
+        lng: z.number().nullable(),
+        zoom: z.number().nullable(),
+        height: z.number().nullable(),
+        title: z.string().nullable(),
+      }),
+      description:
+        "Google Maps embed iframe. Prefer query for place search, or lat/lng for a fixed location.",
+    },
+
     Avatar: {
       props: z.object({
         src: z.string().nullable(),
