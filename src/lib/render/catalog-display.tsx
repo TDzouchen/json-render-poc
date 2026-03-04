@@ -1,6 +1,11 @@
 /* eslint-disable react/prop-types */
 import { useState } from "react";
-import { getByPath } from "@json-render/core";
+import {
+  addByPath,
+  getByPath,
+  removeByPath,
+  setByPath,
+} from "@json-render/core";
 import { defineRegistry, useStateBinding } from "@json-render/react";
 import { toast } from "sonner";
 import { playgroundCatalog as catalog } from "./catalog";
@@ -124,6 +129,65 @@ const resolveParamString = (
   return (
     (typeof resolvedValue === "string" ? resolvedValue : undefined) || fallback
   );
+};
+
+const cloneStateModel = (
+  state: Record<string, unknown>,
+): Record<string, unknown> => {
+  if (typeof structuredClone === "function") {
+    return structuredClone(state);
+  }
+
+  return JSON.parse(JSON.stringify(state)) as Record<string, unknown>;
+};
+
+const isPathRefObject = (value: unknown): value is { path: string } => {
+  if (!value || typeof value !== "object") return false;
+
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.path === "string" &&
+    record.path.startsWith("/") &&
+    Object.keys(record).length === 1
+  );
+};
+
+const resolveStateTemplate = (
+  value: unknown,
+  state: Record<string, unknown>,
+): unknown => {
+  if (isPathRefObject(value)) {
+    return getByPath(state, value.path);
+  }
+
+  if (typeof value === "string") {
+    if (value === "$id") {
+      if (
+        typeof crypto !== "undefined" &&
+        typeof crypto.randomUUID === "function"
+      ) {
+        return crypto.randomUUID();
+      }
+
+      return String(Date.now());
+    }
+
+    return resolveParamValue(value, state);
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => resolveStateTemplate(item, state));
+  }
+
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(
+        ([key, innerValue]) => [key, resolveStateTemplate(innerValue, state)],
+      ),
+    );
+  }
+
+  return value;
 };
 
 export const {
@@ -1209,9 +1273,10 @@ export const {
   },
 
   actions: {
-    // Built-in state actions — handled by ActionProvider, stubs needed for types
     setState: async () => {},
+
     pushState: async () => {},
+
     removeState: async () => {},
 
     // Demo actions — show toasts

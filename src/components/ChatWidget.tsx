@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Spec } from "@json-render/react";
 import { useUIStream } from "@json-render/react";
 import {
@@ -26,11 +26,6 @@ interface Message {
   usageText?: string;
 }
 
-type PromptContextTurn = {
-  role: "user" | "assistant";
-  text: string;
-};
-
 type UsageMeta = {
   __meta?: string;
   promptTokens?: number;
@@ -46,6 +41,231 @@ const initialMessages: Message[] = [
     time: "",
   },
 ];
+// const initialMessages: Message[] = [
+//   {
+//     id: 1,
+//     text: "Design your UI by chatting with the bot. Try asking it to create a simple form, or a dashboard with charts!",
+//     sender: "ChatBot",
+//     time: "",
+//   },
+//   {
+//     id: 1772605151738,
+//     text: "make a user card",
+//     sender: "User",
+//     time: "2:19 PM",
+//   },
+//   {
+//     id: 1772605151739,
+//     sender: "ChatBot",
+//     time: "2:19 PM",
+//     uiTree: {
+//       root: "card",
+//       elements: {
+//         card: {
+//           type: "Card",
+//           props: {
+//             maxWidth: "sm",
+//             centered: true,
+//           },
+//           children: ["stack"],
+//         },
+//         stack: {
+//           type: "Stack",
+//           props: {
+//             direction: "vertical",
+//             gap: "md",
+//             align: "center",
+//           },
+//           children: ["avatar", "name", "email", "role", "badge"],
+//         },
+//         badge: {
+//           type: "Badge",
+//           props: {
+//             text: {
+//               $state: "/user/status",
+//             },
+//             variant: {
+//               $cond: {
+//                 $state: "/user/status",
+//               },
+//               $then: "success",
+//               $else: "default",
+//             },
+//           },
+//           children: [],
+//         },
+//         role: {
+//           type: "Text",
+//           props: {
+//             text: {
+//               $state: "/user/role",
+//             },
+//             variant: "body",
+//           },
+//           children: [],
+//         },
+//         email: {
+//           type: "Text",
+//           props: {
+//             text: {
+//               $state: "/user/email",
+//             },
+//             variant: "muted",
+//           },
+//           children: [],
+//         },
+//         name: {
+//           type: "Heading",
+//           props: {
+//             text: {
+//               $state: "/user/name",
+//             },
+//             level: "h3",
+//           },
+//           children: [],
+//         },
+//         avatar: {
+//           type: "Avatar",
+//           props: {
+//             name: {
+//               $state: "/user/name",
+//             },
+//             size: "lg",
+//           },
+//           children: [],
+//         },
+//       },
+//       state: {
+//         user: {
+//           name: "Alex Morgan",
+//           email: "alex.morgan@example.com",
+//           role: "Product Designer",
+//           status: "Active",
+//         },
+//       },
+//     },
+//   },
+//   {
+//     id: 1772605189584,
+//     text: "add form default is hidden",
+//     sender: "User",
+//     time: "2:19 PM",
+//   },
+//   {
+//     id: 1772605189585,
+//     sender: "ChatBot",
+//     time: "2:19 PM",
+//     uiTree: {
+//       root: "card",
+//       elements: {
+//         card: {
+//           type: "Card",
+//           props: {
+//             maxWidth: "sm",
+//             centered: true,
+//           },
+//           children: ["stack", "edit-btn"],
+//         },
+//         "edit-btn": {
+//           type: "Button",
+//           props: {
+//             label: "Edit Profile",
+//             variant: "primary",
+//           },
+//           on: {
+//             press: {
+//               action: "setState",
+//               params: {
+//                 statePath: "/showForm",
+//                 value: true,
+//               },
+//             },
+//           },
+//           children: [],
+//         },
+//         stack: {
+//           type: "Stack",
+//           props: {
+//             direction: "vertical",
+//             gap: "md",
+//             align: "center",
+//           },
+//           children: ["avatar", "name", "email", "role", "badge"],
+//         },
+//         badge: {
+//           type: "Badge",
+//           props: {
+//             text: {
+//               $state: "/user/status",
+//             },
+//             variant: {
+//               $cond: {
+//                 $state: "/user/status",
+//               },
+//               $then: "success",
+//               $else: "default",
+//             },
+//           },
+//           children: [],
+//         },
+//         role: {
+//           type: "Text",
+//           props: {
+//             text: {
+//               $state: "/user/role",
+//             },
+//             variant: "body",
+//           },
+//           children: [],
+//         },
+//         email: {
+//           type: "Text",
+//           props: {
+//             text: {
+//               $state: "/user/email",
+//             },
+//             variant: "muted",
+//           },
+//           children: [],
+//         },
+//         name: {
+//           type: "Heading",
+//           props: {
+//             text: {
+//               $state: "/user/name",
+//             },
+//             level: "h3",
+//           },
+//           children: [],
+//         },
+//         avatar: {
+//           type: "Avatar",
+//           props: {
+//             name: {
+//               $state: "/user/name",
+//             },
+//             size: "lg",
+//           },
+//           children: [],
+//         },
+//       },
+//       state: {
+//         user: {
+//           name: "Alex Morgan",
+//           email: "alex.morgan@example.com",
+//           role: "Product Designer",
+//           status: "Active",
+//         },
+//         showForm: false,
+//         form: {
+//           name: "",
+//           email: "",
+//           role: "",
+//         },
+//       },
+//     },
+//   },
+// ];
 
 function toRenderableSpec(spec: Spec): Spec | null {
   if (!spec?.root || !spec.elements || !spec.elements[spec.root]) {
@@ -112,13 +332,10 @@ function BotAvatar() {
 
 function BotLoadingBubble() {
   return (
-    <div className="flex items-center gap-1.5 py-1 text-gray-500">
-      <span className="text-sm font-medium animate-pulse">Generating UI</span>
-      <div className="flex items-center gap-1">
-        <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce [animation-delay:0ms]" />
-        <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce [animation-delay:120ms]" />
-        <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce [animation-delay:240ms]" />
-      </div>
+    <div className="flex items-center gap-1.5 py-1 text-[#5c2d91]">
+      <span className="text-sm font-medium animate-pulse">
+        Generating UI...
+      </span>
     </div>
   );
 }
@@ -133,6 +350,7 @@ export default function ChatWidget() {
   const currentTreeRef = useRef<Spec | null>(null);
   const hasCurrentStreamDataRef = useRef(false);
   const rawLinesBaselineRef = useRef(0);
+  const isComposingRef = useRef(false);
 
   const {
     spec: apiSpec,
@@ -171,6 +389,31 @@ export default function ChatWidget() {
     return `${hour}:${m} ${ampm}`;
   };
 
+  const handleUiStateChange = useCallback(
+    (messageId: number, nextState: Record<string, unknown>) => {
+      setMessages((prev) =>
+        prev.map((msg) => {
+          if (msg.id !== messageId || !msg.uiTree) return msg;
+
+          const nextTree: Spec = {
+            ...msg.uiTree,
+            state: nextState,
+          };
+
+          if (currentTreeRef.current?.root === msg.uiTree.root) {
+            currentTreeRef.current = nextTree;
+          }
+
+          return {
+            ...msg,
+            uiTree: nextTree,
+          };
+        }),
+      );
+    },
+    [],
+  );
+
   const sendMessage = async () => {
     const prompt = input.trim();
     if (!prompt || isStreaming) return;
@@ -199,15 +442,6 @@ export default function ChatWidget() {
     }
 
     try {
-      const history = messages
-        .filter((msg) => !!msg.text)
-        .slice(-8)
-        .map((msg) => ({
-          role: msg.sender === "User" ? "user" : "assistant",
-          text: msg.uiTree ? JSON.stringify(msg.uiTree) : msg.text || "",
-        }))
-        .filter((turn): turn is PromptContextTurn => turn.text.length > 0);
-
       await send(prompt, {
         previousSpec: currentTreeRef.current,
         history,
@@ -341,7 +575,7 @@ export default function ChatWidget() {
                 return (
                   <div key={msg.id} className="flex items-start gap-2">
                     <BotAvatar />
-                    <div className="flex flex-col gap-1 max-w-[80%]">
+                    <div className="flex flex-col gap-1">
                       <div className="bg-white rounded-2xl rounded-tl-sm px-4 py-2.5 shadow-sm">
                         {isCurrentGenerating ? (
                           <BotLoadingBubble />
@@ -353,8 +587,13 @@ export default function ChatWidget() {
                           )
                         )}
                         {msg.uiTree && (
-                          <div>
-                            <SchemaRender uiTree={msg.uiTree} />
+                          <div className="max-w-full overflow-auto">
+                            <SchemaRender
+                              uiTree={msg.uiTree}
+                              onStateChange={(nextState) =>
+                                handleUiStateChange(msg.id, nextState)
+                              }
+                            />
                           </div>
                         )}
                       </div>
@@ -408,6 +647,17 @@ export default function ChatWidget() {
                   e.preventDefault();
                   return;
                 }
+
+                const nativeEvent = e.nativeEvent as KeyboardEvent;
+                const isComposing =
+                  isComposingRef.current ||
+                  nativeEvent.isComposing ||
+                  nativeEvent.keyCode === 229;
+
+                if (isComposing) {
+                  return;
+                }
+
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
                   sendMessage();
@@ -417,6 +667,12 @@ export default function ChatWidget() {
                     t.style.height = "64px";
                   }, 0);
                 }
+              }}
+              onCompositionStart={() => {
+                isComposingRef.current = true;
+              }}
+              onCompositionEnd={() => {
+                isComposingRef.current = false;
               }}
             />
             <div className="flex items-center gap-3 text-gray-400 pb-0.5">

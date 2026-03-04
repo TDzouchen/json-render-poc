@@ -22,10 +22,6 @@ const SYSTEM_PROMPT = catalog.prompt({
 });
 
 const MAX_PROMPT_LENGTH = +process.env.MAX_PROMPT_LENGTH!;
-const DEFAULT_CONTEXT_TURNS = 8;
-const CONTEXT_TURNS = Number.isFinite(Number(process.env.CONTEXT_TURNS))
-  ? Math.max(0, Number(process.env.CONTEXT_TURNS))
-  : DEFAULT_CONTEXT_TURNS;
 const API_KEY = process.env.API_KEY;
 const LLM_PROVIDER = process.env.LLM_PROVIDER;
 const LLM_PROVIDER_BASE_URL = process.env.LLM_PROVIDER_BASE_URL;
@@ -116,20 +112,9 @@ export async function POST(req: Request) {
   };
   const model = createModel();
 
-  const historyText = (context?.history || [])
-    .slice(-CONTEXT_TURNS)
-    .map(
-      (turn) => `${turn.role === "user" ? "User" : "Assistant"}: ${turn.text}`,
-    )
-    .join("\n");
-
-  const contextualPrompt = historyText
-    ? `Conversation context:\n${historyText}\n\nCurrent request:\n${prompt}`
-    : prompt;
-
   const userPrompt = buildUserPrompt({
-    prompt: contextualPrompt,
-    // currentSpec: context?.previousSpec,
+    prompt,
+    currentSpec: context?.previousSpec,
     maxPromptLength: MAX_PROMPT_LENGTH,
   });
 
